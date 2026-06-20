@@ -1,0 +1,4 @@
+wxPython
+yt-dlp
+youtube-transcript-api
+PyArabic
