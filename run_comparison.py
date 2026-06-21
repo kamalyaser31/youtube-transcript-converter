@@ -2,22 +2,26 @@
 Comparison Script: Raw vs Refined Arabic Transcript
 """
 
-import os
-import re
 from converter_engine import YTConverterEngine
 from text_processor import ArabicTextRefiner
+
 
 def run_comparison(url):
     engine = YTConverterEngine()
     refiner = ArabicTextRefiner()
-    
+
     print(f"[*] Fetching transcript for: {url}")
-    success, title, video_id = engine.get_video_info(url)
+    success, info = engine.get_video_info(url)
     if not success:
-        print(f"Error: {title}")
+        print(
+            f"Error: {info.get('error') if isinstance(info, dict) else info}"
+        )
         return
 
-    raw_lines = engine.fetch_transcript_segments(video_id)
+    title = info.get("title", "video")
+    video_id = info.get("id")
+
+    raw_lines, lang_code = engine.fetch_transcript_segments(video_id)
     if not raw_lines:
         print("Error: Could not fetch transcript.")
         return
@@ -32,7 +36,11 @@ def run_comparison(url):
     with open("Refined_Transcript.md", "w", encoding="utf-8") as f:
         f.write(f"Title: {title} (REFINED)\nURL: {url}\n\n" + refined_content)
 
-    print("[*] Comparison files created: Raw_Transcript.md and Refined_Transcript.md")
+    print(
+        "[*] Comparison files created: "
+        "Raw_Transcript.md and Refined_Transcript.md"
+    )
+
 
 if __name__ == "__main__":
     url = "https://www.youtube.com/watch?v=CGqhTO1ruGQ"

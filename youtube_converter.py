@@ -16,7 +16,7 @@ def run_cli(
     urls: List[str],
     output: Optional[str],
     langs: List[str],
-    cookies: Optional[str]
+    cookies: Optional[str],
 ):
     """CLI execution path."""
     engine = YTConverterEngine()
@@ -29,13 +29,17 @@ def run_cli(
     if cookies:
         print(f"[*] Using Cookies: {cookies}")
 
+    def on_status(event_type, msg, details):
+        if event_type == "start_video":
+            print(f"    - Fetching: {msg}")
+        elif event_type == "success":
+            print(f"    - [OK] {msg}")
+        elif event_type == "fail":
+            print(f"    - [FAIL] {msg}")
+
     for i, url in enumerate(urls, 1):
         print(f"[{i}/{len(urls)}] Working on: {url}")
-        results = engine.convert(url, out_dir, langs, cookies)
-        for ok, msg in results:
-            status = "OK" if ok else "FAIL"
-            print(f"    - [{status}] {msg}")
-
+        engine.convert(url, out_dir, langs, cookies, on_status=on_status)
 
 
 def main():
@@ -46,12 +50,13 @@ def main():
     parser.add_argument("-i", "--input", nargs="+", help="URLs to process")
     parser.add_argument("-o", "--output", help="Custom output directory")
     parser.add_argument(
-        "-l", "--langs", nargs="+", default=["ar", "en"], 
-        help="Language codes in order of preference"
+        "-l",
+        "--langs",
+        nargs="+",
+        default=["ar", "en"],
+        help="Language codes in order of preference",
     )
-    parser.add_argument(
-        "-c", "--cookies", help="Path to cookies.txt file"
-    )
+    parser.add_argument("-c", "--cookies", help="Path to cookies.txt file")
 
     if len(sys.argv) == 1:
         app = wx.App()
@@ -63,12 +68,7 @@ def main():
         if not args.input:
             parser.print_help()
         else:
-            run_cli(
-                args.input, 
-                args.output, 
-                args.langs, 
-                args.cookies
-            )
+            run_cli(args.input, args.output, args.langs, args.cookies)
 
 
 if __name__ == "__main__":
