@@ -1,4 +1,4 @@
-﻿__pycache__/
+__pycache__/
 *.py[cod]
 *$py.class
 .venv/
@@ -11,3 +11,6 @@ dist/
 .pytest_cache/
 .vscode/
 .idea/
+md/
+/*.md
+!/README.md
