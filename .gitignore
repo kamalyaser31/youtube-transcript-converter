@@ -14,3 +14,4 @@ dist/
 md/
 /*.md
 !/README.md
+!/CHANGELOG.md
