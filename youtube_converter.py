@@ -1,75 +1,92 @@
+"""YouTube Transcriber - Main CLI and GUI Entry Point.
+
+Provides instant CLI transcription and on-demand PySide6 GUI launch via lazy import.
 """
-YouTube Transcriber Pro - Main Entry Point with PyArabic Refinement
-"""
+
+from __future__ import annotations
 
 import argparse
-import os
 import sys
+from pathlib import Path
 from typing import List, Optional
 
-import wx
-from converter_engine import YTConverterEngine
-from converter_gui import YTMainFrame
+from converter_engine import ConversionJob, YTConverterEngine, status_prefix
+
+
+def _on_cli_status(event_type: str, msg: str, _details: dict) -> None:
+    """Status callback formatting progress for CLI stdout."""
+    print(f"  {status_prefix(event_type)} {msg}")
 
 
 def run_cli(
-    urls: List[str],
-    output: Optional[str],
-    langs: List[str],
-    cookies: Optional[str],
-):
-    """CLI execution path."""
-    engine = YTConverterEngine()
-    out_dir = output or os.getcwd()
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    print(f"[*] Processing {len(urls)} URLs...")
-    print(f"[*] Preferred Languages: {langs}")
-    if cookies:
-        print(f"[*] Using Cookies: {cookies}")
-
-    def on_status(event_type, msg, details):
-        if event_type == "start_video":
-            print(f"    - Fetching: {msg}")
-        elif event_type == "success":
-            print(f"    - [OK] {msg}")
-        elif event_type == "fail":
-            print(f"    - [FAIL] {msg}")
-
+    urls: List[str], output: Optional[str], langs: List[str], cookies: Optional[str]
+) -> int:
+    """Execute batch conversion; exit code 1 when any video failed."""
+    try:
+        engine = YTConverterEngine(cookies_path=cookies)
+    except OSError as err:  # missing file, or http.cookiejar.LoadError
+        print(f"[FAIL] Cannot load cookies file {cookies}: {err}", file=sys.stderr)
+        return 2
+    out_dir = Path(output) if output else Path.cwd() / "md"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    job = ConversionJob(out_dir, langs, on_status=_on_cli_status)
+    print(f"[*] Processing {len(urls)} URL(s) -> {out_dir}")
+    results = []
     for i, url in enumerate(urls, 1):
-        print(f"[{i}/{len(urls)}] Working on: {url}")
-        engine.convert(url, out_dir, langs, cookies, on_status=on_status)
+        print(f"[{i}/{len(urls)}] Target: {url}")
+        results.extend(engine.convert(url, job))
+    return 0 if all(ok for ok, _ in results) else 1
 
 
-def main():
-    """Main application entry point."""
+def launch_gui() -> int:
+    """Launch PySide6 graphical interface with lazy module import."""
+    from PySide6.QtWidgets import QApplication
+    from converter_gui import YTMainFrame
+
+    app = QApplication(sys.argv)
+    window = YTMainFrame()
+    window.show()
+    return app.exec()
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Construct command-line argument parser."""
     parser = argparse.ArgumentParser(
-        description="YouTube Transcriber Pro (PyArabic Enhanced)"
+        description="YouTube Transcriber (CLI & Accessible PySide6 GUI)"
     )
-    parser.add_argument("-i", "--input", nargs="+", help="URLs to process")
-    parser.add_argument("-o", "--output", help="Custom output directory")
+    parser.add_argument(
+        "-i", "--input", nargs="+", help="YouTube video or playlist URLs"
+    )
+    parser.add_argument(
+        "-o", "--output", help="Output directory path (defaults to ./md)"
+    )
     parser.add_argument(
         "-l",
         "--langs",
         nargs="+",
         default=["ar", "en"],
-        help="Language codes in order of preference",
+        help="Preferred language codes",
     )
     parser.add_argument("-c", "--cookies", help="Path to cookies.txt file")
+    parser.add_argument(
+        "--gui", action="store_true", help="Launch graphical user interface"
+    )
+    return parser
 
+
+def main() -> int:
+    """Application entry point routing to GUI or CLI mode."""
+    parser = build_parser()
     if len(sys.argv) == 1:
-        app = wx.App()
-        frame = YTMainFrame()
-        frame.Show()
-        app.MainLoop()
-    else:
-        args = parser.parse_args()
-        if not args.input:
-            parser.print_help()
-        else:
-            run_cli(args.input, args.output, args.langs, args.cookies)
+        return launch_gui()
+    args = parser.parse_args()
+    if args.gui:
+        return launch_gui()
+    if not args.input:
+        parser.print_help()
+        return 1
+    return run_cli(args.input, args.output, args.langs, args.cookies)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

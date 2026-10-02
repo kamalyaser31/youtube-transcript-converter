@@ -1,4 +1,4 @@
-wxPython
+PySide6
 yt-dlp
-youtube-transcript-api
-PyArabic
+youtube-transcript-api>=1.2
+requests
