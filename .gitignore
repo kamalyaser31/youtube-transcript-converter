@@ -9,9 +9,13 @@ build/
 dist/
 *.egg-info/
 .pytest_cache/
+.ruff_cache/
+.tmp/
 .vscode/
 .idea/
+
+# Generated transcripts, summaries and reports
 md/
-/*.md
-!/README.md
-!/CHANGELOG.md
+
+# Personal browser session; never publish
+cookies.txt
